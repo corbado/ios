@@ -1,0 +1,81 @@
+name: observe-release
+
+# Tags release the Git package; source archives let customers import the same release
+# into their own Swift registry without sharing registry credentials with us.
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: macos-15
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.4.app
+
+      - name: Pre-warm simulator runtimes
+        # macos runners intermittently list zero iOS destinations on first use — kick
+        # CoreSimulator and wait for the runtimes to register before running tests.
+        run: |
+          sudo xcodebuild -runFirstLaunch
+          for i in $(seq 1 12); do
+            xcrun simctl list devices available | grep -q "iPhone" && break
+            sleep 5
+          done
+          xcrun simctl list devices available | grep -q "iPhone"
+
+      - name: Verify Sdk.version matches tag
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          VERSION="${RELEASE_TAG#v}"
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+            echo "Expected a stable vX.Y.Z release tag"; exit 1;
+          }
+          grep -Fqx "    public static let version = \"${VERSION}\"" observe/Sources/Sdk.swift || {
+            echo "Sdk.version does not match tag ${RELEASE_TAG}"; exit 1;
+          }
+          echo "RELEASE_VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Prepare registry delivery
+        run: |
+          mkdir -p "$RUNNER_TEMP/delivery" "$RUNNER_TEMP/package-test"
+          ARCHIVE="corbado-ios-${RELEASE_VERSION}.zip"
+          swift package archive-source --output "$RUNNER_TEMP/delivery/$ARCHIVE"
+          cp LICENSE LIMITATIONS.md "$RUNNER_TEMP/delivery/"
+          {
+            echo "version=$RELEASE_VERSION"
+            echo "commit=$(git rev-parse HEAD)"
+            echo "source=https://github.com/corbado/ios"
+            xcodebuild -version
+            swift --version
+          } > "$RUNNER_TEMP/delivery/RELEASE.txt"
+          cd "$RUNNER_TEMP/delivery"
+          shasum -a 256 "$ARCHIVE" LICENSE LIMITATIONS.md RELEASE.txt > SHA256SUMS
+          unzip -q "$ARCHIVE" -d "$RUNNER_TEMP/package-test"
+          test -f "$RUNNER_TEMP/package-test/corbado-ios-${RELEASE_VERSION}/observe/Sources/PrivacyInfo.xcprivacy"
+
+      - name: Test delivered package (iOS Simulator)
+        run: |
+          cd "$RUNNER_TEMP/package-test/corbado-ios-${RELEASE_VERSION}"
+          xcodebuild test \
+            -scheme corbado-ios \
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -skipPackagePluginValidation
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: gh release create "$RELEASE_TAG" "$RUNNER_TEMP/delivery/"* --verify-tag --generate-notes

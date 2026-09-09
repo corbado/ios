@@ -1,0 +1,13 @@
+# Source archives (`swift package archive-source`, registry publish) ship the SDK only.
+examples/     export-ignore
+docs/         export-ignore
+.github/      export-ignore
+AGENTS.md     export-ignore
+CLAUDE.md     export-ignore
+TASKS.md      export-ignore
+.swiftlint.yml export-ignore
+.swift-format export-ignore
+.editorconfig export-ignore
+.gitattributes export-ignore
+tools/        export-ignore
+LIMITATIONS.md export-ignore

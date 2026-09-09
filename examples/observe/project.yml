@@ -1,0 +1,35 @@
+name: ObserveExample
+options:
+  bundleIdPrefix: com.corbado
+  deploymentTarget:
+    iOS: "17.0"
+packages:
+  corbado-ios:
+    path: ../..
+targets:
+  ObserveExample:
+    type: application
+    platform: iOS
+    sources: [Sources]
+    dependencies:
+      - package: corbado-ios
+        product: CorbadoObserve
+    scheme:
+      testTargets: []
+    entitlements:
+      path: ObserveExample.entitlements
+      properties:
+        com.apple.developer.associated-domains:
+          - webcredentials:corbado-demo.com
+          - webcredentials:corbado-demo.com?mode=developer
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.corbado.observe-example
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        SWIFT_VERSION: "6.0"
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: T9A667JL6T
+        # Local ingest endpoint during development (http://127.0.0.1).
+        INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsLocalNetworking: YES
