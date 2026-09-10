@@ -1,0 +1,28 @@
+included:
+  - observe
+  - examples
+
+excluded:
+  - .build
+  - .swiftpm
+
+line_length:
+  warning: 120
+  error: 160
+
+# `ts` is a wire-contract field name; `op`/`at` are established short forms in the codebase.
+identifier_name:
+  min_length: 2
+
+# The tracker facade mirrors the Android SDK's single-file ObserveTracker deliberately.
+file_length:
+  warning: 700
+type_body_length:
+  warning: 500
+function_body_length:
+  warning: 60
+
+# swift format owns formatting; SwiftLint is for static analysis.
+disabled_rules:
+  - trailing_comma
+  - opening_brace
